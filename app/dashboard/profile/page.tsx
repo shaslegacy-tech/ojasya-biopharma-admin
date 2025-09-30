@@ -1,31 +1,87 @@
-'use client';
+"use client";
+import { useState, useEffect, ChangeEvent } from "react";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
+interface HospitalForm {
+  _id?: string;
+  name: string;
+  email: string;
+  phone: string;
+  contactPerson: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  dlNumber: string;
+  gstNumber: string;
+}
 
-import { useEffect, useState } from 'react';
-import api from '@/lib/api';
+export default function HospitalProfilePage() {
+  const [form, setForm] = useState<HospitalForm>({
+    name: "",
+    email: "",
+    phone: "",
+    contactPerson: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "",
+    dlNumber: "",
+    gstNumber: "",
+  });
 
+  const [loading, setLoading] = useState(false);
 
-export default function Profile() {
-type Profile = {
-  name?: string;
-  email?: string;
-  role?: string;
-};
+  useEffect(() => {
+    fetch("/api/hospitals/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setForm(data));
+  }, []);
 
-const [profile, setProfile] = useState<Profile>({});
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
+  const handleSubmit = async () => {
+    setLoading(true);
+    const res = await fetch(`/api/hospitals/${form._id || ""}`, {
+      method: form._id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setLoading(false);
+    if (res.ok) {
+      alert("Profile saved");
+    } else {
+      const err = await res.json();
+      alert(err.message);
+    }
+  };
 
-useEffect(() => {
-  api.get('/hospital/profile').then(res => setProfile(res.data as Profile));
-}, []);
-
-
-return (
-<div className="bg-white p-6 rounded-lg shadow">
-<h2 className="text-xl font-bold mb-4">Profile</h2>
-<p><strong>Name:</strong> {profile.name}</p>
-<p><strong>Email:</strong> {profile.email}</p>
-<p><strong>Role:</strong> {profile.role}</p>
-</div>
-);
+  return (
+    <div className="max-w-2xl mx-auto p-4">
+      <h2 className="text-2xl font-semibold mb-4">Hospital Profile</h2>
+      <div className="grid grid-cols-2 gap-4">
+        {Object.entries(form).map(([key, value]) => (
+          key !== "_id" && (
+            <Input
+              key={key}
+              name={key}
+              placeholder={key}
+              value={value}
+              onChange={handleChange}
+            />
+          )
+        ))}
+      </div>
+      <Button className="mt-4" onClick={handleSubmit} disabled={loading}>
+        {loading ? "Saving..." : "Save Profile"}
+      </Button>
+    </div>
+  );
 }

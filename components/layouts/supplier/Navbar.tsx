@@ -1,27 +1,21 @@
-// components/layouts/hospital/Navbar.tsx
+// components/layouts/supplier/Navbar.tsx
 "use client";
-import { Bell, UserCircle } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { Bell, UserCircle, Menu } from "lucide-react";
 
-export default function HospitalNavbar() {
-  const { user, logout } = useAuth();
-  console.log("first", user);
+interface SupplierNavbarProps {
+  onToggleSidebar: () => void;
+}
 
+export default function SupplierNavbar({ onToggleSidebar }: SupplierNavbarProps) {
   return (
     <nav className="w-full h-16 bg-white shadow flex justify-between items-center px-6">
-      <h1 className="text-lg font-semibold text-teal-700">Supplier Dashboard</h1>
+      <div className="flex items-center gap-4">
+        <Menu className="w-6 h-6 cursor-pointer lg:hidden" onClick={onToggleSidebar} />
+        <h1 className="text-lg font-semibold text-gray-800">Supplier Dashboard</h1>
+      </div>
       <div className="flex items-center gap-4">
         <Bell className="w-6 h-6 text-gray-600 cursor-pointer" />
         <UserCircle className="w-8 h-8 text-gray-700 cursor-pointer" />
-        <div className="flex items-center gap-4">
-        {user && <span>{user.email}</span>}
-        <button
-          onClick={logout}
-          className="bg-white text-teal-600 px-3 py-1 rounded-md"
-        >
-          Logout
-        </button>
-      </div>
       </div>
     </nav>
   );
