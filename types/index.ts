@@ -37,6 +37,15 @@ export interface IUser {
 export interface IProduct {
   _id: string;
   name: string;
+  category: string;
+  description?: string;
+  brand?: string;
+  price: number;
+  unit: string;
+  images: string[];
+  supplierId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface IInventory {
@@ -47,4 +56,9 @@ export interface IInventory {
   stock: number;
   price: number;
   threshold: number;
+}
+
+export interface IProductOrder {
+  productId: IProduct;
+  quantity: number;
 }

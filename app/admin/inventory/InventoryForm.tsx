@@ -72,18 +72,22 @@ const InventoryForm: React.FC<InventoryFormProps> = ({ close, editingItem }) => 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow-lg w-96 flex flex-col gap-3"
-      >
-        <h2 className="text-lg font-bold">{editingItem ? "Edit Inventory" : "Add Inventory"}</h2>
+    <form
+      onSubmit={handleSubmit}
+      className="relative mx-auto bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl w-full p-8 flex flex-col gap-6 border-t-6 border-gradient-to-r from-[#0072ff] via-[#00bfa6] to-[#00ff9d] max-h-[75vh] overflow-y-auto"
+    >
+      {/* Form Header */}
+      <h2 className="text-3xl font-bold text-[#0f4c75] mb-6">
+        {editingItem ? "Edit Inventory" : "Add Inventory"}
+      </h2>
 
+      {/* Vertical Form Fields */}
+      <div className="flex flex-col gap-5 w-full">
         <select
           required
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
-          className="border px-2 py-1 rounded"
+          className="border px-4 py-3 rounded-xl focus:ring-2 focus:ring-[#00bfa6]"
         >
           <option value="">Select Product</option>
           {products.map((p) => (
@@ -97,7 +101,7 @@ const InventoryForm: React.FC<InventoryFormProps> = ({ close, editingItem }) => 
           required
           value={supplierId}
           onChange={(e) => setSupplierId(e.target.value)}
-          className="border px-2 py-1 rounded"
+          className="border px-4 py-3 rounded-xl focus:ring-2 focus:ring-[#00bfa6]"
         >
           <option value="">Select Supplier</option>
           {suppliers.map((s) => (
@@ -110,7 +114,7 @@ const InventoryForm: React.FC<InventoryFormProps> = ({ close, editingItem }) => 
         <select
           value={hospitalId}
           onChange={(e) => setHospitalId(e.target.value)}
-          className="border px-2 py-1 rounded"
+          className="border px-4 py-3 rounded-xl focus:ring-2 focus:ring-[#00bfa6]"
         >
           <option value="">Select Hospital (Optional)</option>
           {hospitals.map((h) => (
@@ -125,36 +129,46 @@ const InventoryForm: React.FC<InventoryFormProps> = ({ close, editingItem }) => 
           placeholder="Stock"
           value={stock}
           onChange={(e) => setStock(Number(e.target.value))}
-          className="border px-2 py-1 rounded"
+          className="border px-4 py-3 rounded-xl focus:ring-2 focus:ring-[#00bfa6]"
           required
         />
+
         <input
           type="number"
           placeholder="Price"
           value={price}
           onChange={(e) => setPrice(Number(e.target.value))}
-          className="border px-2 py-1 rounded"
+          className="border px-4 py-3 rounded-xl focus:ring-2 focus:ring-[#00bfa6]"
           required
         />
+
         <input
           type="number"
           placeholder="Threshold"
           value={threshold}
           onChange={(e) => setThreshold(Number(e.target.value))}
-          className="border px-2 py-1 rounded"
+          className="border px-4 py-3 rounded-xl focus:ring-2 focus:ring-[#00bfa6]"
           required
         />
+      </div>
 
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={close} className="px-4 py-1 rounded border">
-            Cancel
-          </button>
-          <button type="submit" className="bg-blue-500 text-white px-4 py-1 rounded">
-            {editingItem ? "Update" : "Create"}
-          </button>
-        </div>
-      </form>
-    </div>
+      {/* Actions */}
+       <div className="flex justify-end gap-4 mt-6">
+        <button
+          type="button"
+          onClick={close}
+          className="px-6 py-3 rounded-xl border hover:bg-gray-100 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#0072ff] via-[#00bfa6] to-[#00ff9d] text-white font-semibold hover:scale-105 transition-transform"
+        >
+          {editingItem ? "Update" : "Create"}
+        </button>
+      </div>
+    </form>
   );
 };
 

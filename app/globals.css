@@ -16,3 +16,97 @@ a {
 .bg-brand-gradient {
   background: linear-gradient(90deg, #4F8EF7 0%, #2AC3FF 100%);
 }
+
+@keyframes slide-in {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-down {
+  0% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out forwards;
+}
+
+@keyframes slide-down-float {
+  0% { opacity: 0; transform: translateY(-20px); box-shadow: 0 0 0px rgba(0,0,0,0); }
+  50% { opacity: 1; transform: translateY(0); box-shadow: 0 15px 40px rgba(0,0,0,0.2); }
+  100% { opacity: 1; transform: translateY(0); box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+}
+
+.animate-slide-down-float {
+  animation: slide-down-float 0.35s ease-out forwards;
+}
+
+
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-down {
+  0% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out forwards;
+}
+
+.animate-fade-down {
+  animation: fade-down 0.4s ease-out forwards;
+}
+@keyframes glow {
+  0% { box-shadow: 0 0 15px rgba(0,191,166,0.3), 0 0 30px rgba(0,191,166,0.2); }
+  50% { box-shadow: 0 0 25px rgba(0,191,166,0.5), 0 0 40px rgba(0,191,166,0.3); }
+  100% { box-shadow: 0 0 15px rgba(0,191,166,0.3), 0 0 30px rgba(0,191,166,0.2); }
+}
+
+.animate-glow {
+  animation: glow 2.5s ease-in-out infinite;
+}
+
+/* Pulsating red glow for low stock */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 75, 43, 0.6), 0 0 20px rgba(255, 75, 43, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 75, 43, 0.8), 0 0 30px rgba(255, 75, 43, 0.6);
+  }
+}
+
+/* Floating animation for cards */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Fade-in animation */
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+

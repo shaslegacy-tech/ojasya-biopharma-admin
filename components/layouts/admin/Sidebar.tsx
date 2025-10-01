@@ -29,6 +29,8 @@ export default function AdminSidebar() {
     { href: "/admin/commissions", label: "Commissions", icon: DollarSign },
     { href: "/admin/reports", label: "Reports", icon: ClipboardList },
     { href: "/admin/settings", label: "Settings", icon: Settings },
+    { href: "/admin/profile", label: "Profile", icon: Users },
+    { href: "/admin/products", label: "Products", icon: Package }
   ];
 
   return (
