@@ -1,20 +1,32 @@
-// components/supplier/SupplierDashboard.tsx
+// components/supplier/DashboardCards.tsx
 "use client";
-import React from "react";
+import { Package, FileText, Users, BarChart2 } from "lucide-react";
 
-export default function SupplierDashboard() {
+interface CardProps {
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  gradient: string;
+}
+
+export default function DashboardCards({ data }: { data: CardProps[] }) {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold mb-4">Supplier Dashboard</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-white shadow p-4 rounded">Total Orders: 24</div>
-        <div className="bg-white shadow p-4 rounded">Pending Orders: 5</div>
-        <div className="bg-white shadow p-4 rounded">Inventory Items: 120</div>
-      </div>
-      <div className="bg-white shadow p-4 rounded mt-6">
-        <h2 className="font-semibold mb-2">Recent Orders</h2>
-        <p>Order table or charts go here...</p>
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {data.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div
+            key={card.title}
+            className={`bg-gradient-to-r ${card.gradient} p-6 rounded-2xl shadow-lg transform transition-all hover:scale-105 hover:shadow-2xl`}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-bold text-lg">{card.title}</h3>
+              <Icon className="w-8 h-8 text-white opacity-90" />
+            </div>
+            <p className="mt-4 text-white text-3xl font-extrabold">{card.value}</p>
+          </div>
+        );
+      })}
     </div>
   );
 }

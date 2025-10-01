@@ -1,15 +1,12 @@
 // app/supplier/layout.tsx
-import SupplierSidebar from "@/components/layouts/supplier/Sidebar";
-import SupplierNavbar from "@/components/layouts/supplier/Navbar";
+"use client";
+import RoleLayoutSupplier from "@/components/layouts/RoleLayoutSupplier";
+import { ReactNode } from "react";
 
-export default function SupplierLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-screen">
-      <SupplierSidebar />
-      <div className="flex-1 flex flex-col">
-        <SupplierNavbar />
-        <main className="p-6 flex-1 bg-gray-50">{children}</main>
-      </div>
-    </div>
-  );
+interface SupplierLayoutProps {
+  children: ReactNode;
+}
+
+export default function SupplierLayout({ children }: SupplierLayoutProps) {
+  return <RoleLayoutSupplier role="supplier">{children}</RoleLayoutSupplier>;
 }
