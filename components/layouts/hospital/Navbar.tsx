@@ -111,7 +111,11 @@ export default function HospitalNavbar({ toggleSidebar, user }: HospitalNavbarPr
               <Link href="/settings" className="block px-4 py-2 hover:bg-gray-100 transition">
                 Settings
               </Link>
-              <Link href="/logout" className="block px-4 py-2 hover:bg-gray-100 transition">
+              <Link href="/auth/login" 
+                  onClick={() => {
+                  localStorage.removeItem("authToken");
+                }}
+                className="block px-4 py-2 hover:bg-gray-100 transition">
                 Logout
               </Link>
             </div>
