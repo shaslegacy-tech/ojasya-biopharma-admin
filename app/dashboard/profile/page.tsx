@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useEffect, useState } from "react";
 import HospitalForm, { HospitalFormData } from "@/components/HospitalForm";
 
@@ -22,10 +22,15 @@ export default function HospitalProfilePage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-6">Hospital Profile</h2>
+    <div className="max-w-4xl mx-auto p-6">
       {hospital && (
-        <HospitalForm role="hospital" initialData={hospital} onSubmit={handleSubmit} />
+        <div>
+          <HospitalForm
+            role="hospital"
+            initialData={hospital}
+            onSubmit={handleSubmit}
+          />
+        </div>
       )}
     </div>
   );

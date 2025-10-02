@@ -1,42 +1,72 @@
-// components/layouts/hospital/Sidebar.tsx
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ClipboardList, FileText, User } from "lucide-react";
+import { ClipboardList, FileText, User, CreditCard } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 
-export default function HospitalSidebar() {
+interface SidebarLink {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const links: SidebarLink[] = [
+  { href: "/dashboard", label: "Dashboard", icon: ClipboardList },
+  { href: "/dashboard/orders", label: "Orders", icon: FileText },
+  { href: "/dashboard/profile", label: "Profile", icon: User },
+  { href: "/dashboard/invoices", label: "Invoices", icon: CreditCard },
+];
+
+interface HospitalSidebarProps {
+  collapsed: boolean;
+}
+
+export default function HospitalSidebar({ collapsed }: HospitalSidebarProps) {
   const pathname = usePathname();
 
-  const links = [
-    { href: "/dashboard", label: "Dashboard", icon: ClipboardList },
-    { href: "/dashboard/orders", label: "Orders", icon: FileText },
-    { href: "/dashboard/profile", label: "Profile", icon: User },
-    { href: "/dashboard/invoices", label: "Invoices", icon: FileText },
-  ];
-
   return (
-    <aside className="h-full w-64 bg-gradient-to-b from-cyan-700 to-teal-600 text-white p-5">
-      <h2 className="text-xl font-bold mb-8">Hospital Panel</h2>
-      <ul className="space-y-4">
-        {links.map((link) => {
-          const Icon = link.icon;
-          return (
-            <li key={link.href}>
+    <aside
+      className={cn(
+        "h-full flex flex-col bg-gradient-to-b from-[#0a8780] via-[#0daba9] to-[#78cfce] text-white shadow-lg transition-all duration-300",
+        collapsed ? "w-20" : "w-64"
+      )}
+    >
+      {/* Branding / Logo */}
+      <div className="flex items-center justify-center p-4 border-b border-white/20">
+        <span className="font-bold text-2xl transition-all duration-300">
+          {collapsed ? "OB" : "Ojasya Biopharma"}
+        </span>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 mt-4">
+        <ul className="space-y-2">
+          {links.map(({ href, label, icon: Icon }) => (
+            <li key={href}>
               <Link
-                href={link.href}
+                href={href}
                 className={cn(
-                  "flex items-center gap-3 p-2 rounded-lg hover:bg-white/20 transition",
-                  pathname === link.href && "bg-white/30 font-semibold"
+                  "flex items-center gap-3 p-3 rounded-lg transition-all duration-200",
+                  pathname === href
+                    ? "bg-white/30 font-semibold text-white"
+                    : "hover:bg-white/20 text-white"
                 )}
               >
                 <Icon className="h-5 w-5" />
-                {link.label}
+                {!collapsed && <span>{label}</span>}
               </Link>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      </nav>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-white/20">
+        <button className="w-full py-2 rounded-lg bg-white/20 hover:bg-white/30 transition">
+          {!collapsed ? "Settings" : "⚙️"}
+        </button>
+      </div>
     </aside>
   );
 }

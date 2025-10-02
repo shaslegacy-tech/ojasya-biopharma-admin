@@ -55,7 +55,7 @@ export default function SupplierDashboard() {
 
   return (
     <ProtectedRoute roles={["supplier"]}>
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Dashboard Cards */}
         <DashboardCards data={cardsData} />
         {/* Charts + Notifications */}

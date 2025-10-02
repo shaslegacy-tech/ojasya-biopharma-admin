@@ -1,49 +1,54 @@
 "use client";
-import { Bell, UserCircle, Menu } from "lucide-react";
-import { useState } from "react";
+
+import { Bell, Menu, User } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface SupplierNavbarProps {
   onToggleSidebar: () => void;
 }
 
 export default function SupplierNavbar({ onToggleSidebar }: SupplierNavbarProps) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 5);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <nav className="w-full h-16 bg-white shadow-md flex justify-between items-center px-6 sticky top-0 z-20">
+    <header
+      className={`sticky top-0 z-30 flex items-center justify-between px-6 py-3 transition-all duration-300 backdrop-blur-md ${
+        scrolled ? "shadow-md bg-white/80" : "bg-white"
+      }`}
+    >
+      {/* Left Section */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onToggleSidebar}
+          className="p-2 rounded-lg hover:bg-gray-100 transition"
+        >
+          <Menu className="h-6 w-6 text-gray-700" />
+        </button>
+        <h1 className="text-lg font-semibold text-gray-800">Ojasya Supplier Dashboard</h1>
+      </div>
+
+      {/* Right Section */}
       <div className="flex items-center gap-4">
-        <Menu className="w-6 h-6 cursor-pointer lg:hidden text-gray-700" onClick={onToggleSidebar} />
-        <h1 className="text-xl font-bold text-gray-800">Supplier Dashboard</h1>
-      </div>
+        <button className="relative p-2 rounded-full hover:bg-gray-100 transition">
+          <Bell className="h-6 w-6 text-gray-700" />
+          <span className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+            3
+          </span>
+        </button>
 
-      <div className="flex items-center gap-6 relative">
-        {/* Notification */}
-        <div className="relative cursor-pointer">
-          <Bell className="w-6 h-6 text-gray-600" />
-          <span className="absolute -top-1 -right-1 bg-red-500 rounded-full w-3 h-3 animate-pulse" />
-        </div>
-
-        {/* User Dropdown */}
-        <div className="relative">
-          <UserCircle
-            className="w-8 h-8 text-gray-700 cursor-pointer"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-          />
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg py-2 z-30">
-              <button
-                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
-                onClick={() => {
-                  localStorage.removeItem("authToken");
-                  window.location.href = "/auth/login";
-                }}
-              >
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
+        <button className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition">
+          <User className="h-6 w-6 text-gray-700" />
+          <span className="hidden sm:block font-medium text-gray-700">Supplier</span>
+        </button>
       </div>
-    </nav>
+    </header>
   );
 }
