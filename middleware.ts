@@ -5,8 +5,11 @@ import type { NextRequest } from "next/server";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow public routes
+  // allow public assets, _next, API, and docs
   if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/static") ||
+    pathname.startsWith("/api") ||
     pathname.startsWith("/auth/login") ||
     pathname.startsWith("/auth/register") ||
     pathname === "/"
@@ -14,13 +17,14 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Only check if token cookie exists (no decoding here)
   const token = req.cookies.get("token")?.value;
   if (!token) {
-    return NextResponse.redirect(new URL("/auth/login", req.url));
+    // preserve return url
+    const loginUrl = new URL("/auth/login", req.url);
+    loginUrl.searchParams.set("next", req.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Let backend /me handle actual verification
   return NextResponse.next();
 }
 

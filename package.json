@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate:client": "openapi --input ./openapi.json --output ./generated --client axios"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
@@ -19,6 +20,7 @@
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
+    "next-pwa": "^5.6.0",
     "react": "19.1.0",
     "react-chartjs-2": "^5.3.0",
     "react-countup": "^6.5.3",
@@ -27,13 +29,17 @@
     "react-hook-form": "^7.63.0",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
+    "react-markdown": "^10.1.0",
     "react-tooltip": "^5.29.1",
     "recharts": "^3.2.1",
+    "remark-gfm": "^4.0.1",
+    "swr": "^2.3.6",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@types/jspdf": "^1.3.3",
+    "@types/next-pwa": "^5.6.9",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-csv": "^1.1.10",
@@ -41,6 +47,7 @@
     "autoprefixer": "^10.4.15",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
+    "openapi-typescript-codegen": "^0.29.0",
     "postcss": "^8.4.27",
     "tailwindcss": "^3.3.3",
     "typescript": "^5"

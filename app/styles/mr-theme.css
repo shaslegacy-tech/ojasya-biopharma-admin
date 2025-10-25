@@ -1,0 +1,11 @@
+/* styles/mr-theme.css */
+
+/* slide down tiny animation used by menu */
+@keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.animate-slide-down { animation: slideDown 160ms ease-out; }
+
+/* premium shadow */
+.shadow-2xl { box-shadow: 0 10px 30px rgba(12, 30, 40, 0.18); }
+
+/* sweet gradient tokens examples — you already used inline colors; these helpers help if you want classes */
+.bg-mr-left { background: linear-gradient(90deg,#0fd7c7 0%, #38bcb0 50%, #1f9f7a 100%); }

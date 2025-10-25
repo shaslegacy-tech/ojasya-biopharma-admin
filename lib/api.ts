@@ -1,38 +1,29 @@
 // lib/api.ts
-
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
   headers: { "Content-Type": "application/json" },
-  withCredentials: true, // ✅ important to send cookies
+  withCredentials: true, // important to send HttpOnly cookies
 });
 
-// Request interceptor: automatically attach auth token if available
+// Request interceptor: optionally attach header when using token-based flows.
+// NOTE: if backend uses HttpOnly cookie, you DO NOT need to set Authorization here.
 api.interceptors.request.use(
   (config) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("authToken"); // adjust if you store token differently
-      if (token) {
-        config.headers!["Authorization"] = `Bearer ${token}`;
-      }
-    }
+    // Leave config as-is if cookie auth is used
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle errors globally
+// Response interceptor: unwrap error payload consistently
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response) {
-      // handle 401, 403 or other global errors
-      if (error.response.status === 401) {
-        console.error("Unauthorized! Logging out...");
-        // optional: trigger logout from AuthContext here
-      }
-      return Promise.reject(error.response.data);
+    if (error?.response) {
+      // forward structured payload if present
+      return Promise.reject(error.response);
     }
     return Promise.reject(error);
   }

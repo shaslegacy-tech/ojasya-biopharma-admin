@@ -1,34 +1,77 @@
+// app/auth/login/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { AxiosError } from "axios";
+import { useRouter } from "next/navigation"; // <-- use this hook
 
 export default function Login() {
   const { login } = useAuth();
+  const router = useRouter(); // <-- hook usage
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    setLoading(true);
+  // inside app/auth/login/page.tsx
+const handleLogin = async () => {
+  setLoading(true);
+  try {
+    const resp = await api.post("auth/login", { email, password });
+    console.debug("[Login] POST /auth/login response:", resp.status, resp.headers, resp.data);
+
     try {
-      // Call login endpoint via Axios global instance
-      await api.post("auth/login", { email, password });
+      const loggedUser = await login();
+      console.debug("[Login] login() returned:", loggedUser);
 
-      // Let AuthContext handle fetching /me and redirecting
-      await login();
-    } catch (err) {
-      // Type-safe error handling
-      const error = err as AxiosError<{ message: string }>;
-      console.error("Login error:", error);
+      const roleNorm = (loggedUser?.role ?? "").toString().toLowerCase().trim();
+      if (roleNorm === "mr") {
+        router.push("/mr");
+        return;
+      }
+      if (roleNorm === "hospital") { router.push("/dashboard"); return; }
+      if (roleNorm === "supplier") { router.push("/supplier/dashboard"); return; }
+      if (roleNorm === "admin") { router.push("/admin/dashboard"); return; }
 
-      alert(error.response?.data?.message || "Login failed, please try again.");
-    } finally {
-      setLoading(false);
+      // If no role, try direct /auth/me fetch to inspect server shape
+      try {
+        const meResp = await api.get("/auth/me");
+        console.debug("[Login] extra /auth/me fetch:", meResp.status, meResp.data);
+        const raw = meResp.data;
+        const srv = (raw && (raw.data || raw.user)) ? (raw.data || raw.user) : raw;
+        console.debug("[Login] extracted me:", srv);
+        // If server says role=mr in any casing, navigate
+        const maybeRole = (srv?.role ?? srv?.data?.role ?? srv?.user?.role) ?? "";
+        if (typeof maybeRole === "string" && maybeRole.toLowerCase().includes("mr")) {
+          router.push("/mr");
+          return;
+        }
+      } catch (e) {
+        console.warn("[Login] extra /auth/me fetch failed", e);
+      }
+
+      // default fallback
+      router.push("/");
+    } catch (e) {
+      console.warn("[Login] login() failed after POST:", e);
+      // attempt one more /auth/me read for debugging
+      try {
+        const extra = await api.get("/auth/me");
+        console.debug("[Login] /auth/me after failed login():", extra.status, extra.data);
+      } catch (ee) {
+        console.warn("[Login] second /auth/me failed:", ee);
+      }
+      alert("Login succeeded but fetching user failed — check console logs.");
     }
-  };
+  } catch (err) {
+    const error = err as AxiosError<{ message?: string }>;
+    console.error("[Login] POST error:", error?.response?.data ?? error);
+    alert(error?.response?.data?.message || "Login failed, please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-teal-600 to-cyan-600">

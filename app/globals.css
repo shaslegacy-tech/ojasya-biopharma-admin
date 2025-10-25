@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "./styles/mr-theme.css";
 /* Ojasya Biopharma Branding */
 body {
   font-family: 'Inter', sans-serif;
