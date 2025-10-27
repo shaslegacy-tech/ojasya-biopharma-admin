@@ -1,14 +1,42 @@
+/* Tailwind base must be included already */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 @import "./styles/mr-theme.css";
-/* Ojasya Biopharma Branding */
-body {
-  font-family: 'Inter', sans-serif;
-  background: #f5f9ff;
-  color: #1f2937;
+
+/* Ensure the document defaults to neutral background and text,
+   and let Tailwind  utility classes control the page look. */
+:root {
+  color-scheme: light dark;
 }
+
+/* Important: don't hardcode body background here.
+   Make body inherit the background from the app container so
+   Tailwind's `bg-... dark:bg-...` can handle it. */
+html, body, #__next {
+  height: 100%;
+}
+
+/* Provide sensible default background colors when no class is present */
+html.light, html:not(.dark) {
+  background: theme('colors.white', #fff);
+  color: theme('colors.slate.900', #0f172a);
+}
+
+/* When `.dark` class is present, use dark background & light text */
+html.dark {
+  background: theme('colors.slate.900', #0f172a);
+  color: theme('colors.slate.100', #f8fafc);
+}
+
+/* utility to prevent unexpected black from browser defaults */
+body {
+  background: transparent; /* let container's bg classes show through */
+  font-family: 'Inter', sans-serif;
+}
+
+/* Ojasya Biopharma Branding */
+
 
 a {
   color: #2AC3FF;

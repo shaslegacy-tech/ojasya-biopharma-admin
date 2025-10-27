@@ -59,7 +59,6 @@ export default function MRNavbar({ toggleSidebar }: { toggleSidebar: () => void 
           type="text"
           placeholder="Search hospitals or tasks..."
           className="flex-1 bg-transparent text-white placeholder-white/80 outline-none"
-          spellCheck={false}
           suppressHydrationWarning
         />
       </div>

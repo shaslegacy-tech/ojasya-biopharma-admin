@@ -1,73 +1,216 @@
+// components/mr/OrderForm.tsx
 "use client";
+
 import React, { useEffect, useMemo, useState } from "react";
-import api from "@/lib/api";
 import useSWR from "swr";
+import api from "@/lib/api";
+import { toast } from "react-hot-toast";
+import { Search, Plus, Minus, Trash2, Loader2 } from "lucide-react";
 import Modal from "../ui/Modal";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
-type Product = { _id: string; name?: string; brand?: string; price: number; unit?: string; image?: string };
+/* ----------------------------- Types ----------------------------- */
 
-// debounce helper
-function debounce<T extends (...args: any[]) => void>(fn: T, wait = 180) {
-  let t: number | undefined;
+interface ProductRaw {
+  _id?: string;
+  id?: string;
+  name?: string;
+  brand?: string;
+  mrp?: number | string;
+  tradePrice?: number | string;
+  unit?: string;
+  category?: string;
+  images?: string[] | unknown;
+  image?: string;
+  createdBy?: string | { _id?: string };
+  [k: string]: unknown;
+}
+
+interface InventoryRaw {
+  _id?: string;
+  product?: string | { _id?: string } | unknown;
+  supplier?: string | { _id?: string } | unknown;
+  availableQty?: number | string; // corresponds to Inventory.availableQty
+  costPrice?: number | string; // corresponds to Inventory.costPrice
+  [k: string]: unknown;
+}
+
+interface StockRaw {
+  _id?: string;
+  product?: string | { _id?: string } ;
+  supplier?: string | { _id?: string };
+  quantity?: number | string; // corresponds to Stock.quantity
+  [k: string]: unknown;
+}
+
+type Product = {
+  _id: string;
+  name: string;
+  brand?: string;
+  category?: string;
+  image?: string;
+  displayPrice: number; // final price shown: inventory costPrice > product.tradePrice > product.mrp
+  availableStock?: number | null; // from inventory.availableQty or stock.quantity
+  supplierName?: string;
+};
+
+/* ----------------------------- Helpers --------------------------- */
+
+const money = (n = 0) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(n));
+
+function debounce<T extends (...args: any[]) => void>(fn: T, wait = 160) {
+  let timer: number | undefined;
   return (...args: Parameters<T>) => {
-    if (t) window.clearTimeout(t);
-    t = window.setTimeout(() => fn(...args), wait) as unknown as number;
+    if (timer) window.clearTimeout(timer);
+    timer = window.setTimeout(() => fn(...args), wait) as unknown as number;
   };
 }
 
-export default function OrderForm({ hospitalId, onPlaced }: { hospitalId: string; onPlaced?: () => void }) {
+const PlaceholderImage: React.FC<{ className?: string }> = ({ className = "" }) => (
+  <div className={`flex items-center justify-center ${className}`}>
+    <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <rect width="72" height="72" rx="10" fill="#f8fafc" />
+      <path d="M18 34h36v10H18z" fill="#eef2f7" />
+      <path d="M22 28h28v4H22z" fill="#e6edf3" />
+    </svg>
+  </div>
+);
+
+/* --------------------------- Component --------------------------- */
+
+export default function OrderForm({ hospitalId, onPlaced }: { hospitalId?: string; onPlaced?: () => void }) {
+  const perPage = 3;
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const perPage = 12;
 
-  const { data, mutate, isValidating } = useSWR("/products", (url: string) => api.get(url).then((r) => r.data));
+  // fetch products, inventories and stocks
+  const { data: prodData, isValidating: prodLoading, mutate: mutateProducts } = useSWR<any>("/products", (url: string) => api.get(url).then((r) => r.data));
+  const { data: invData, isValidating: invLoading, mutate: mutateInv } = useSWR<any>("/inventories", (url: string) => api.get(url).then((r) => r.data), { revalidateOnFocus: false });
+  const { data: stocksData, isValidating: stocksLoading, mutate: mutateStocks } = useSWR<any>("/stocks", (url: string) => api.get(url).then((r) => r.data), { revalidateOnFocus: false });
 
-  // normalize shapes (supports array, {data:[]}, {products:[]})
-  const raw = data as unknown;
-  let rawList: unknown[] = [];
-  if (Array.isArray(raw)) rawList = raw;
-  else if (raw && typeof raw === "object") {
-    const obj = raw as Record<string, unknown>;
-    if (Array.isArray(obj.products)) rawList = obj.products as unknown[];
-    else if (Array.isArray(obj.data)) rawList = obj.data as unknown[];
-  }
-  const products: Product[] = rawList.map((x) => {
-    const p = x as Record<string, unknown>;
-    const id = (p._id as string | undefined) ?? (p.id as string | undefined) ?? String(Math.random()).slice(2);
-    const name = (p.name as string | undefined) ?? "Unnamed product";
-    const brand = (p.brand as string | undefined) ?? "";
-    const priceVal = p.price as unknown;
-    const price = typeof priceVal === "number" ? priceVal : Number(priceVal ?? 0);
-    const unit = (p.unit as string | undefined) ?? "";
-    const imagesVal = p.images as unknown;
-    let image: string | undefined = undefined;
-    if (Array.isArray(imagesVal) && imagesVal.length > 0) {
-      const first = (imagesVal as unknown[])[0];
-      if (typeof first === "string") image = first;
-    } else if (typeof p.image === "string") {
-      image = p.image as string;
+  // normalize product list
+  const rawProducts: ProductRaw[] = useMemo(() => {
+    if (!prodData) return [];
+    if (Array.isArray(prodData)) return prodData as ProductRaw[];
+    const obj = prodData as Record<string, any>;
+    if (Array.isArray(obj.products)) return obj.products as ProductRaw[];
+    if (Array.isArray(obj.data)) return obj.data as ProductRaw[];
+    return [];
+  }, [prodData]);
+
+  // normalize inventories (Inventory model)
+  const rawInventories: InventoryRaw[] = useMemo(() => {
+    if (!invData) return [];
+    if (Array.isArray(invData)) return invData as InventoryRaw[];
+    const obj = invData as Record<string, any>;
+    if (Array.isArray(obj.data)) return obj.data as InventoryRaw[];
+    if (Array.isArray(obj.inventories)) return obj.inventories as InventoryRaw[];
+    return [];
+  }, [invData]);
+
+  // normalize stocks (Stock model)
+  const rawStocks: StockRaw[] = useMemo(() => {
+    if (!stocksData) return [];
+    if (Array.isArray(stocksData)) return stocksData as StockRaw[];
+    const obj = stocksData as Record<string, any>;
+    if (Array.isArray(obj.data)) return obj.data as StockRaw[];
+    if (Array.isArray(obj.stocks)) return obj.stocks as StockRaw[];
+    return [];
+  }, [stocksData]);
+
+  // build maps: inventoryMap (productId -> inventory) and stockMap (productId -> stock)
+  const inventoryMap = useMemo(() => {
+    const m = new Map<string, InventoryRaw>();
+    for (const inv of rawInventories) {
+      const pid = typeof inv.product === "string" ? inv.product : inv.product && typeof inv.product === "object" ? String((inv.product as any)._id ?? "") : "";
+      if (!pid) continue;
+      const cur = m.get(pid);
+      const price = Number(inv.costPrice ?? 0) || 0;
+      // prefer inventory with costPrice > 0 or higher costPrice
+      if (!cur) m.set(pid, inv);
+      else {
+        const curPrice = Number(cur.costPrice ?? 0) || 0;
+        if (price > curPrice) m.set(pid, inv);
+      }
     }
-    return { _id: id, name, brand, price, unit, image } as Product;
-  });
+    return m;
+  }, [rawInventories]);
 
-  // debounced search
+  const stockMap = useMemo(() => {
+  const m = new Map<string, StockRaw>();
+
+  for (const s of rawStocks) {
+    // Determine product id robustly
+    let pid = "";
+    if (!s) continue;
+
+    // product could be a string id or an object like { _id: "..." } or { product: {...} }
+    if (typeof s.product === "string") {
+      pid = s.product;
+    } else if (s.product && typeof s.product === "object") {
+      // try common id keys
+      pid = String((s.product as { _id?: string })._id ?? (s.product as any).id ?? "");
+    }
+
+    if (!pid) continue;
+
+    // parse quantity as number (safe)
+    const qty = Number(s.quantity ?? 0) || 0;
+
+    const existing = m.get(pid);
+    if (!existing) {
+      m.set(pid, s);
+      continue;
+    }
+
+    // Prefer stock entry with higher quantity (simple heuristic)
+    const existingQty = Number(existing.quantity ?? 0) || 0;
+    if (qty > existingQty) {
+      m.set(pid, s);
+    }
+  }
+
+  return m;
+}, [rawStocks]);
+
+  // merge into Product[]: prefer inventory costPrice, fallback to tradePrice then mrp
+  const products: Product[] = useMemo(() => {
+    return rawProducts.map((p) => {
+      const id = String(p._id ?? p.id ?? "");
+      const inv = inventoryMap.get(id);
+      const stock = stockMap.get(id);
+      const mrp = Number(p.mrp ?? p.tradePrice ?? p.tradePrice ?? 0) || 0;
+      const trade = Number(p.tradePrice ?? 0) || 0;
+      const invPrice = Number(inv?.costPrice ?? 0) || 0;
+      const displayPrice = invPrice > 0 ? invPrice : trade > 0 ? trade : mrp;
+      const images = Array.isArray(p.images) ? (p.images as any[]).map(String) : [];
+      const image = typeof p.image === "string" ? p.image : images.length ? images[0] : undefined;
+      const availableStock = inv ? (Number(inv.availableQty ?? 0) || null) : stock ? (Number(stock.quantity ?? 0) || null) : null;
+
+      return {
+        _id: id || (typeof crypto !== "undefined" && typeof (crypto as any).randomUUID === "function" ? (crypto as any).randomUUID() : String(Math.random()).slice(2)),
+        name: String(p.name ?? "Unnamed product"),
+        brand: p.brand ? String(p.brand) : undefined,
+        category: typeof p.category === "string" ? p.category : undefined,
+        image,
+        displayPrice,
+        availableStock,
+        supplierName: inv && (inv as any).supplier ? String((inv as any).supplier) : undefined,
+      } as Product;
+    });
+  }, [rawProducts, inventoryMap, stockMap]);
+
+  /* ---------------------------- search ------------------------------- */
   const [debouncedQuery, setDebouncedQuery] = useState("");
   useEffect(() => {
-    const d = debounce((q: string) => setDebouncedQuery(q), 160);
+    const d = debounce((s: string) => setDebouncedQuery(s), 200);
     d(query.trim());
   }, [query]);
   const q = (debouncedQuery || "").toLowerCase();
 
   const filtered = useMemo(() => {
-    if (!products || products.length === 0) return [];
+    if (!products) return [];
     if (!q) return products;
-    return products.filter((p) => {
-      const name = (p.name || "").toLowerCase();
-      const brand = (p.brand || "").toLowerCase();
-      const unit = (p.unit || "").toLowerCase();
-      return name.includes(q) || brand.includes(q) || unit.includes(q);
-    });
+    return products.filter((p) => [p.name, p.brand ?? "", p.unit ?? ""].some((s) => s && s.toLowerCase().includes(q)));
   }, [products, q]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -77,205 +220,296 @@ export default function OrderForm({ hospitalId, onPlaced }: { hospitalId: string
 
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  const [selected, setSelected] = useState<Record<string, number>>({});
-  const [previewOpen, setPreviewOpen] = useState(false);
-
+  /* --------------------------- cart state --------------------------- */
+  const [cart, setCart] = useState<Record<string, number>>({});
   useEffect(() => {
-    if (products.length) {
-      setSelected((prev) => {
-        const copy = { ...prev };
-        products.slice(0, 50).forEach((p) => {
-          if (!(p._id in copy)) copy[p._id] = 0;
-        });
-        return copy;
+    if (products.length === 0) return;
+    setCart((prev) => {
+      const copy = { ...prev };
+      products.forEach((p) => {
+        if (!(p._id in copy)) copy[p._id] = 0;
       });
-    }
+      return copy;
+    });
   }, [products]);
 
-  const items = useMemo(
-    () =>
-      Object.entries(selected)
-        .map(([productId, qty]) => {
-          const p = products.find((x) => x._id === productId);
-          if (!p || qty <= 0) return null;
-          return { productId, quantity: qty, price: Number(p.price || 0), name: p.name || "Unnamed product" };
-        })
-        .filter((it): it is { productId: string; quantity: number; price: number; name: string } => !!it),
-    [selected, products]
-  );
-  const total = items.reduce((s, it) => s + Number(it.quantity) * Number(it.price), 0);
+  const cartItems = useMemo(() => {
+    return Object.entries(cart)
+      .map(([productId, qty]) => {
+        if (!qty || qty <= 0) return null;
+        const p = products.find((x) => x._id === productId);
+        if (!p) return null;
+        return {
+          productId,
+          qty,
+          price: p.displayPrice ?? 0,
+          name: p.name,
+          image: p.image,
+        };
+      })
+      .filter(Boolean) as Array<{ productId: string; qty: number; price: number; name: string; image?: string }>;
+  }, [cart, products]);
 
-  // typed notify helper
-  type WindowWithToast = Window & { toast?: (m: string) => void };
-  const notify = (m: string) => {
-    try {
-      if (typeof window !== "undefined") {
-        const w = window as unknown as WindowWithToast;
-        if (typeof w.toast === "function") {
-          w.toast(m);
-          return;
-        }
-      }
-    } catch {
-      // ignore
-    }
-    // fallback
-    // eslint-disable-next-line no-alert
-    alert(m);
-  };
+  const subtotal = useMemo(() => cartItems.reduce((s, it) => s + it.qty * it.price, 0), [cartItems]);
+  const total = subtotal;
 
-  const handlePlace = async () => {
-    if (items.length === 0) {
-      notify("Please select at least one item.");
+  /* ------------------------ cart handlers --------------------------- */
+  const addOne = (id: string) => setCart((s) => ({ ...s, [id]: (s[id] ?? 0) + 1 }));
+  const removeOne = (id: string) => setCart((s) => ({ ...s, [id]: Math.max(0, (s[id] ?? 0) - 1) }));
+  const setQty = (id: string, val: number) => setCart((s) => ({ ...s, [id]: Math.max(0, Math.floor(val)) }));
+  const removeFromCart = (id: string) => setCart((s) => ({ ...s, [id]: 0 }));
+
+  /* ------------------------ place order flow ------------------------ */
+  const [placing, setPlacing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const placeOrder = () => {
+    if (cartItems.length === 0) {
+      toast.error("Please add at least one item to the cart.");
       return;
     }
-    setPreviewOpen(true);
+    setConfirmOpen(true);
   };
 
-  const doPlace = async () => {
+  const doConfirmPlace = async () => {
+    setConfirmOpen(false);
+    setPlacing(true);
+    const tid = toast.loading("Placing order...");
     try {
-      await api.post("/orders", { hospitalId, products: items, totalPrice: total });
-      notify("Order placed successfully");
-      setSelected({});
-      setPreviewOpen(false);
+      const payload = {
+        customer: hospitalId,            // required by spec & model
+        // placedBy: don't set from client; server will set from cookie user
+        items: cartItems.map((it) => ({
+          productId: it.productId,        // server maps 'product' -> ObjectId in model
+          quantity: it.qty,
+          price: it.price,
+        })),
+        // optional fields:
+        source: "MR_PORTAL",
+        prescriptionFileUrl: undefined,
+      };
+      await api.post("/orders", payload);
+      toast.dismiss(tid);
+      toast.success("Order placed");
+      setCart({});
+      mutateProducts();
+      mutateInv();
+      mutateStocks();
       onPlaced?.();
-      mutate();
-    } catch (err: unknown) {
-      const maybe = err as { response?: { data?: { message?: string } }; message?: string } | undefined;
-      const message = maybe?.response?.data?.message || maybe?.message || "Order failed";
-      notify(String(message));
+    } catch (err: any) {
+      toast.dismiss(tid);
+      const message = err?.response?.data?.message ?? err?.message ?? "Order failed";
+      toast.error(String(message));
+    } finally {
+      setPlacing(false);
     }
   };
 
-  const highlight = (text = "") => {
-    if (!q) return text;
-    const idx = text.toLowerCase().indexOf(q);
-    if (idx === -1) return text;
-    const before = text.slice(0, idx);
-    const match = text.slice(idx, idx + q.length);
-    const after = text.slice(idx + q.length);
+  /* --------------------------- ProductCard -------------------------- */
+  const ProductCard: React.FC<{ p: Product }> = ({ p }) => {
+    const qty = cart[p._id] ?? 0;
+    const subtotalLine = qty * (p.displayPrice ?? 0);
     return (
-      <span>
-        {before}
-        <span className="bg-amber-100 text-amber-900 font-semibold px-1 rounded">{match}</span>
-        {after}
-      </span>
+      <article className="flex gap-4 bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition transform hover:-translate-y-1">
+        <div className="w-28 h-28 flex-shrink-0 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
+          {p.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.image} alt={p.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          ) : (
+            <PlaceholderImage />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-sm text-slate-500 mb-1 truncate">{p.brand ?? ""}</div>
+              <h3 className="font-semibold text-slate-900 text-lg truncate">{p.name}</h3>
+            </div>
+
+            <div className="text-right ml-2 flex-shrink-0">
+              {p.displayPrice > 0 ? (
+                <div className="text-emerald-600 font-bold">₹{money(p.displayPrice)}</div>
+              ) : (
+                <div className="text-sm text-slate-400">—</div>
+              )}
+              <div className="text-xs mt-1">
+                <span className="inline-block bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-medium text-xs">{p.category ?? "General"}</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-sm text-slate-500 mt-2 truncate">{p.supplierName ? `from ${p.supplierName}` : ""}</p>
+
+          <div className="mt-4 flex items-center gap-3">
+            <button onClick={() => removeOne(p._id)} className="p-1 border rounded hover:bg-slate-50" aria-label="decrease">
+              <Minus className="w-4 h-4" />
+            </button>
+
+            <input
+              aria-label={`Quantity for ${p.name}`}
+              type="number"
+              min={0}
+              value={qty}
+              onChange={(e) => setQty(p._id, Number(e.target.value))}
+              className="w-24 max-w-[120px] px-3 py-2 border rounded-lg text-sm outline-none"
+            />
+
+            <button onClick={() => addOne(p._id)} className="p-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700" aria-label="increase">
+              <Plus className="w-4 h-4" />
+            </button>
+
+            <div className="ml-auto text-sm text-slate-600 whitespace-nowrap">Subtotal <span className="font-semibold">{p.displayPrice > 0 ? `₹${money(subtotalLine)}` : "—"}</span></div>
+          </div>
+        </div>
+      </article>
     );
   };
 
+  /* ----------------------------- Render ---------------------------- */
+
   return (
-    <div className="p-6 rounded-2xl bg-gradient-to-b from-white/70 via-slate-50/60 to-white/70 border border-slate-100 shadow-xl">
-      {/* header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-semibold text-slate-900">Create Order</h2>
-          <p className="text-sm text-slate-500">Pick products for the hospital and place orders quickly.</p>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center bg-white/60 backdrop-blur-sm rounded-full px-4 py-2 shadow-sm border border-slate-100">
-            <Search className="w-4 h-4 text-slate-400 mr-3" />
-            <input
-              aria-label="Search products"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, brand or unit"
-              className="w-72 bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
-            />
-          </div>
-
-          <div className="text-sm text-slate-600">Page {page}/{totalPages}</div>
-        </div>
-      </div>
-
-      {/* grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isValidating && products.length === 0 && Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="p-4 rounded-xl bg-white/70 border border-slate-100 shadow-sm animate-pulse" />
-        ))}
-
-        {!isValidating && paged.length === 0 && (
-          <div className="col-span-full p-8 rounded-xl bg-white border border-dashed border-slate-200 text-center">
-            <div className="text-lg font-medium text-slate-700">No products found</div>
-            <div className="text-sm text-slate-500 mt-1">Try clearing the search or try different keywords.</div>
-          </div>
-        )}
-
-        {paged.map((p) => (
-          <article key={p._id} className="group bg-white rounded-2xl p-4 shadow-sm hover:shadow-lg transition transform hover:-translate-y-1 border border-slate-100">
-            <div className="flex gap-4">
-              <div className="w-24 h-24 bg-slate-50 rounded-lg flex items-center justify-center overflow-hidden border border-slate-100">
-                {p.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.image} alt={p.name || "product"} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-slate-400 text-xs">No image</div>
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-semibold text-slate-900 truncate">{highlight(p.name || "Unnamed product")}</h3>
-                  <div className="text-right">
-                    <div className="text-sm text-slate-500">₹{Number(p.price || 0)}</div>
-                    <div className="inline-block mt-2 text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-full">{p.unit || "unit"}</div>
-                  </div>
-                </div>
-
-                <p className="text-sm text-slate-500 mt-2 truncate">{p.brand || "Unknown brand"}</p>
-
-                <div className="mt-4 flex items-center gap-3">
-                  <input
-                    aria-label={`Quantity for ${p.name || p._id}`}
-                    type="number"
-                    min={0}
-                    value={selected[p._id] ?? 0}
-                    onChange={(e) => setSelected((prev) => ({ ...prev, [p._id]: Math.max(0, Number(e.target.value)) }))}
-                    className="w-28 px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-300"
-                  />
-                  <div className="ml-auto text-sm text-slate-600">Subtotal <span className="font-semibold">₹{((selected[p._id] ?? 0) * Number(p.price || 0)).toFixed(0)}</span></div>
-                </div>
-              </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Products column */}
+      <div className="lg:col-span-8">
+        <div className="bg-white rounded-2xl p-6 shadow border border-slate-100">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Create Order</h2>
+              <p className="text-sm text-slate-500 max-w-xl">Search and add products — supplier inventory price is used when available.</p>
             </div>
-          </article>
-        ))}
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="text-sm text-slate-500 whitespace-nowrap">Page <span className="font-semibold">{page}</span>/<span className="text-slate-400">{totalPages}</span></div>
+            </div>
+          </div>
+
+           <div className="flex items-center bg-slate-50 mb-4 px-3 py-2 rounded-full border border-slate-100 w-full md:w-[520px]">
+                <Search className="w-4 h-4 text-slate-400 mr-3" />
+                <input
+                  placeholder="Search product name, brand, or unit..."
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setPage(1);
+                  }}
+                  className="bg-transparent outline-none w-full text-sm"
+                />
+              </div>
+
+          <div className="grid gap-4">
+            {prodLoading && Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-28 bg-slate-50 rounded-lg animate-pulse" />
+            ))}
+
+            {!prodLoading && paged.length === 0 && (
+              <div className="p-6 text-center text-slate-500 border border-dashed rounded-lg">No products found.</div>
+            )}
+
+            {paged.map((p) => (
+              <ProductCard key={p._id} p={p} />
+            ))}
+
+          </div>
+
+          <div className="mt-6 flex items-center justify-between text-sm text-slate-600">
+            <div>Page {page} of {totalPages}</div>
+            <div className="space-x-2">
+              <button onClick={() => setPage((s) => Math.max(1, s - 1))} disabled={page <= 1} className="px-3 py-1 border rounded bg-white">Prev</button>
+              <button onClick={() => setPage((s) => Math.min(totalPages, s + 1))} disabled={page >= totalPages} className="px-3 py-1 border rounded bg-white">Next</button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* footer */}
-      <div className="mt-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setPage(Math.max(1, page - 1))} className="p-2 rounded-lg bg-white border shadow-sm hover:scale-105 transition">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <div className="text-sm text-slate-600">Page {page} of {totalPages}</div>
-          <button onClick={() => setPage(Math.min(totalPages, page + 1))} className="p-2 rounded-lg bg-white border shadow-sm hover:scale-105 transition">
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+      {/* Cart sidebar */}
+      <aside className="lg:col-span-4">
+        <div className="sticky top-6 space-y-4">
+          <div className="bg-white rounded-2xl p-6 shadow border border-slate-100">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Cart</h3>
+              <div className="text-sm text-slate-500">{cartItems.length} item(s)</div>
+            </div>
 
-        <div className="flex items-center gap-4">
-          <div className="text-lg font-semibold">Total <span className="text-emerald-600">₹{total.toFixed(0)}</span></div>
-          <button onClick={handlePlace} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow">Preview & Place</button>
-        </div>
-      </div>
+            {cartItems.length === 0 ? (
+              <div className="text-sm text-slate-500 text-center py-10">Your cart is empty. Add items to begin.</div>
+            ) : (
+              <>
+                <div className="space-y-3 max-h-64 overflow-auto divide-y divide-slate-100 pr-2">
+                  {cartItems.map((it) => (
+                    <div key={it.productId} className="py-2 flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-md overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center">
+                        {it.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={it.image} alt={it.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <PlaceholderImage className="w-12 h-12" />
+                        )}
+                      </div>
 
-      {/* preview modal */}
-      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)}>
-        <h3 className="text-lg font-medium mb-2">Order Preview</h3>
-        <div className="space-y-2 max-h-64 overflow-auto">
-          {items.map((it) => (
-            <div key={it.productId} className="flex justify-between">
-              <div className="text-sm">{it.name} × {it.quantity}</div>
-              <div className="text-sm font-semibold">₹{it.quantity * it.price}</div>
+                      <div className="flex-1 text-sm truncate">
+                        <div className="font-medium truncate">{it.name}</div>
+                        <div className="text-xs text-slate-500">x{it.qty}</div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="font-semibold">₹{money(it.price * it.qty)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 border-t pt-4 space-y-3 text-sm">
+                  <div className="flex justify-between"><span>Subtotal</span><span className="font-semibold">₹{money(subtotal)}</span></div>
+                  <div className="flex justify-between"><span>Tax</span><span className="font-semibold">₹0</span></div>
+                  <div className="flex justify-between"><span>Shipping</span><span className="font-semibold">₹0</span></div>
+
+                  <div className="flex justify-between font-bold text-lg border-t pt-2">
+                    <span>Total</span>
+                    <span className="text-emerald-600 font-extrabold">₹{money(total)}</span>
+                  </div>
+
+                  <button onClick={placeOrder} disabled={placing} className="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-semibold shadow">
+                    {placing ? (<span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Placing...</span>) : "Preview & Place Order"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 border shadow-sm text-sm text-slate-600">
+            <div className="font-medium mb-2">Tips</div>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Supplier inventory price shown when available</li>
+              <li>Stock reflects supplier Inventory.availableQty or Stock.quantity</li>
+              <li>Use cart to adjust quantities & review totals</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+
+      {/* confirm modal */}
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <h3 className="text-lg font-semibold">Confirm Order</h3>
+        <p className="text-sm text-slate-600 mt-2">You're about to place an order with {cartItems.length} item(s).</p>
+
+        <div className="mt-4 space-y-2 max-h-48 overflow-auto">
+          {cartItems.map((it) => (
+            <div key={it.productId} className="flex justify-between text-sm">
+              <div className="truncate">{it.name} × {it.qty}</div>
+              <div className="font-medium">₹{money(it.qty * it.price)}</div>
             </div>
           ))}
         </div>
-        <div className="mt-3 flex justify-between items-center">
-          <div className="font-semibold">Total ₹{total.toFixed(0)}</div>
-          <div>
-            <button onClick={() => setPreviewOpen(false)} className="mr-2 px-3 py-1 border rounded">Cancel</button>
-            <button onClick={doPlace} className="px-3 py-1 bg-emerald-600 text-white rounded">Confirm Place</button>
-          </div>
+
+        <div className="mt-4 flex items-center justify-between">
+          <div className="font-semibold">Total</div>
+          <div className="text-xl font-bold text-emerald-600">₹{money(total)}</div>
+        </div>
+
+        <div className="mt-4 flex gap-2 justify-end">
+          <button onClick={() => setConfirmOpen(false)} className="px-3 py-1 border rounded">Cancel</button>
+          <button onClick={doConfirmPlace} className="px-3 py-1 bg-emerald-600 text-white rounded">Place order</button>
         </div>
       </Modal>
     </div>

@@ -31,7 +31,7 @@ export interface IUser {
   country?: string;
   createdAt?: string;
   updatedAt?: string;
-  role?: "admin" | "hospital" | "supplier";
+  role?: "admin" | "hospital" | "supplier" | "mr";
 }
 
 export interface IProduct {

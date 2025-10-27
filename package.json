@@ -10,10 +10,12 @@
     "generate:client": "openapi --input ./openapi.json --output ./generated --client axios"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.12.2",
-    "chart.js": "^4.5.0",
+    "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.23.22",
     "jose": "^6.1.0",
     "jspdf": "^3.0.3",

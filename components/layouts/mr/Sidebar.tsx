@@ -11,7 +11,7 @@ interface Item { href: string; label: string; Icon: React.ComponentType<{ classN
 const links: Item[] = [
   { href: "/mr", label: "Overview", Icon: ClipboardList },
   { href: "/mr/orders", label: "Orders", Icon: FileText },
-  { href: "/mr/hospitals", label: "Hospitals", Icon: Users },
+  { href: "/mr/hospitals", label: "Assigned Hospitals", Icon: Users },
   { href: "/mr/visits", label: "Visits", Icon: Activity },
   { href: "/mr/profile", label: "Profile", Icon: User },
   { href: "/mr/invoices", label: "Invoices", Icon: CreditCard },
